@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "rsvpp",
+    "rsvpp-apigen",
+
+    # Internal
+    "pack",
+]
+
