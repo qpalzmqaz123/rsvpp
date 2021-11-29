@@ -26,6 +26,16 @@ lazy_static::lazy_static! {
     ]);
 }
 
+macro_rules! ensure_not_duplicate {
+    ($name:expr, $set:expr) => {
+        if $set.contains(&$name) {
+            return Ok(Vec::new());
+        } else {
+            $set.insert($name);
+        }
+    };
+}
+
 pub struct Generator {
     in_dir: String,
     out_dir: String,
@@ -68,6 +78,7 @@ impl Generator {
 
     fn gen_single_api(api: &JsonApi, file: &str) -> Result<()> {
         let mut lines: Vec<String> = Vec::new();
+        let mut generated_type_set: HashSet<String> = HashSet::new();
 
         // Gen headers
         lines.push(format!("#![allow(unused)]\n"));
@@ -75,27 +86,27 @@ impl Generator {
 
         // Gen alias
         for alias in &api.aliases {
-            lines.extend(Self::gen_alias(alias)?);
+            lines.extend(Self::gen_alias(alias, &mut generated_type_set)?);
         }
 
         // Gen types
         for ty in &api.types {
-            lines.extend(Self::gen_type(ty)?);
+            lines.extend(Self::gen_type(ty, &mut generated_type_set)?);
         }
 
         // Gen messages
         for msg in &api.messages {
-            lines.extend(Self::gen_message(msg)?);
+            lines.extend(Self::gen_message(msg, &mut generated_type_set)?);
         }
 
         // Gen unions
         for uni in &api.unions {
-            lines.extend(Self::gen_union(uni)?);
+            lines.extend(Self::gen_union(uni, &mut generated_type_set)?);
         }
 
         // Gen enums
         for enu in &api.enums {
-            lines.extend(Self::gen_enum(enu)?);
+            lines.extend(Self::gen_enum(enu, &mut generated_type_set)?);
         }
 
         // Join code
@@ -107,7 +118,12 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_alias(alias: &ApiAliase) -> Result<Vec<String>> {
+    fn gen_alias(
+        alias: &ApiAliase,
+        generated_type_set: &mut HashSet<String>,
+    ) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&alias.name), generated_type_set);
+
         let mut lines: Vec<String> = Vec::new();
 
         let left = gen_struct_name(&alias.name);
@@ -123,7 +139,9 @@ impl Generator {
         Ok(lines)
     }
 
-    fn gen_type(ty: &ApiType) -> Result<Vec<String>> {
+    fn gen_type(ty: &ApiType, generated_type_set: &mut HashSet<String>) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&ty.name), generated_type_set);
+
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("#[derive(Pack, Debug, Default)]"));
@@ -137,7 +155,12 @@ impl Generator {
         Ok(lines)
     }
 
-    fn gen_message(msg: &ApiMessage) -> Result<Vec<String>> {
+    fn gen_message(
+        msg: &ApiMessage,
+        generated_type_set: &mut HashSet<String>,
+    ) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&msg.name), generated_type_set);
+
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("#[derive(Pack, Debug, Default)]"));
@@ -151,7 +174,9 @@ impl Generator {
         Ok(lines)
     }
 
-    fn gen_union(uni: &ApiUnion) -> Result<Vec<String>> {
+    fn gen_union(uni: &ApiUnion, generated_type_set: &mut HashSet<String>) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&uni.name), generated_type_set);
+
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("#[pack_union]"));
@@ -177,7 +202,9 @@ impl Generator {
         Ok(lines)
     }
 
-    fn gen_enum(enu: &ApiEnum) -> Result<Vec<String>> {
+    fn gen_enum(enu: &ApiEnum, generated_type_set: &mut HashSet<String>) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&enu.name), generated_type_set);
+
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("#[derive(Pack, Debug)]"));
