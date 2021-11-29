@@ -330,7 +330,7 @@ impl Generator {
             lines.push(format!("        self.{}", field_name));
             lines.push(format!("    }}"));
             #[rustfmt::skip]
-            lines.push(format!("   pub fn {}(mut self, {}: {}) -> Self {{", set_func_name, field_name, field_ty));
+            lines.push(format!("    pub fn {}(mut self, {}: {}) -> Self {{", set_func_name, field_name, field_ty));
             lines.push(format!("        self.{} = {};", field_name, field_name));
             lines.push(format!("        self"));
             lines.push(format!("    }}"));
@@ -338,11 +338,14 @@ impl Generator {
         } else {
             #[rustfmt::skip]
             lines.push(format!( "impl {} {{", struct_name));
-            lines.push(format!("    fn {}(&self) -> &{} {{", func_name, field_ty));
+            lines.push(format!(
+                "    pub fn {}(&self) -> &{} {{",
+                func_name, field_ty
+            ));
             lines.push(format!("        &self.{}", field_name));
             lines.push(format!("    }}"));
             #[rustfmt::skip]
-            lines.push(format!( "    fn {}(mut self, {}: {}) -> Self {{", set_func_name, field_name, field_ty));
+            lines.push(format!("    pub fn {}(mut self, {}: {}) -> Self {{", set_func_name, field_name, field_ty));
             lines.push(format!("        self.{} = {};", field_name, field_name));
             lines.push(format!("        self"));
             lines.push(format!("    }}"));

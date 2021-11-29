@@ -8,7 +8,7 @@ mod transport;
 pub use client::Client;
 pub use error::Error;
 pub use pack;
-pub use session::Session;
+pub use session::{RecvEntry, Session};
 pub use transport::Transport;
 
 pub type Result<T> = std::result::Result<T, Error>;

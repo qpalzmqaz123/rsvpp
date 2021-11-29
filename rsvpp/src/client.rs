@@ -9,7 +9,7 @@ use crate::{
         VL_API_SOCK_CLNT_CREATE_REP_MSG_ID,
     },
     message::{Message, MessageClientId, MessageContext, MessageId, MessageName},
-    transport, Error, Result, Session, CLIENT_NAME,
+    transport, Error, RecvEntry, Result, Session, CLIENT_NAME,
 };
 
 #[derive(Debug)]
@@ -56,6 +56,33 @@ impl Client {
         T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
     {
         let ctx = self.next_ctx().await;
+        Ok(self.internal_send_msg(msg, ctx).await?)
+    }
+
+    pub async fn send_msg_with_ctx<T>(&self, msg: T, ctx: u32) -> Result<u32>
+    where
+        T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
+    {
+        Ok(self.internal_send_msg(msg, ctx).await?)
+    }
+
+    pub async fn recv_msg<T>(&mut self, ctx: u32) -> Result<T>
+    where
+        T: Pack + MessageName + MessageId + MessageContext,
+    {
+        let msg_id = self.get_msg_id::<T>()?;
+
+        Ok(self.sess.recv_single_msg(ctx, msg_id).await?)
+    }
+
+    pub async fn recv(&mut self, ctx: u32) -> Result<Vec<RecvEntry>> {
+        Ok(self.sess.recv(ctx).await?)
+    }
+
+    async fn internal_send_msg<T>(&self, msg: T, ctx: u32) -> Result<u32>
+    where
+        T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
+    {
         let msg_id = self.get_msg_id::<T>()?;
         let msg = msg
             .set_message_id(msg_id)
@@ -67,13 +94,19 @@ impl Client {
         Ok(ctx)
     }
 
-    pub async fn recv_msg<T>(&mut self, ctx: u32) -> Result<T>
+    pub fn get_msg_id<T>(&self) -> Result<u16>
     where
-        T: Pack + MessageName + MessageId + MessageContext,
+        T: MessageName,
     {
-        let msg_id = self.get_msg_id::<T>()?;
+        let name = T::message_name();
+        let info = self.msg_name_map.get(&name).ok_or(Error::argument(format!(
+            "Message '{}' not found in vpp",
+            name
+        )))?;
 
-        Ok(self.sess.recv_single_msg(ctx, msg_id).await?)
+        // TODO: Validate crc
+
+        Ok(info.id)
     }
 
     async fn init(&mut self) -> Result<()> {
@@ -131,21 +164,6 @@ impl Client {
         }
 
         Ok(())
-    }
-
-    fn get_msg_id<T>(&self) -> Result<u16>
-    where
-        T: MessageName,
-    {
-        let name = T::message_name();
-        let info = self.msg_name_map.get(&name).ok_or(Error::argument(format!(
-            "Message '{}' not found in vpp",
-            name
-        )))?;
-
-        // TODO: Validate crc
-
-        Ok(info.id)
     }
 
     async fn next_ctx(&self) -> u32 {
