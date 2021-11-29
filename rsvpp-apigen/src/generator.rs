@@ -71,7 +71,7 @@ impl Generator {
 
         // Gen headers
         lines.push(format!("#![allow(unused)]\n"));
-        lines.push(format!("use rsvpp::pack::{{Pack, pack_union}};\n"));
+        lines.push(format!("use rsvpp::pack::{{self, Pack, pack_union}};\n"));
 
         // Gen alias
         for alias in &api.aliases {
