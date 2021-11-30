@@ -82,7 +82,8 @@ impl Generator {
 
         // Gen headers
         lines.push(format!("#![allow(unused)]\n"));
-        lines.push(format!("use rsvpp::pack::{{self, Pack, pack_union}};\n"));
+        #[rustfmt::skip]
+        lines.push(format!("use rsvpp::pack::{{self, Pack, PackDefault, pack_union}};\n"));
 
         // Gen alias
         for alias in &api.aliases {
@@ -144,7 +145,7 @@ impl Generator {
 
         let mut lines: Vec<String> = Vec::new();
 
-        lines.push(format!("#[derive(Pack, Debug, Default)]"));
+        lines.push(format!("#[derive(Pack, Debug, PackDefault)]"));
         lines.push(format!("#[packed]"));
         lines.push(format!("pub struct {} {{", gen_struct_name(&ty.name)));
         lines.extend(Self::gen_fields(&ty.fields)?);
@@ -163,7 +164,7 @@ impl Generator {
 
         let mut lines: Vec<String> = Vec::new();
 
-        lines.push(format!("#[derive(Pack, Debug, Default)]"));
+        lines.push(format!("#[derive(Pack, Debug, PackDefault)]"));
         lines.push(format!("#[packed]"));
         lines.push(format!("pub struct {} {{", gen_struct_name(&msg.name)));
         lines.extend(Self::gen_fields(&msg.fields)?);
@@ -180,7 +181,7 @@ impl Generator {
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("#[pack_union]"));
-        lines.push(format!("#[derive(Debug, Default)]"));
+        lines.push(format!("#[derive(Debug, PackDefault)]"));
         lines.push(format!("pub union {} {{", gen_struct_name(&uni.name)));
         lines.extend(Self::gen_union_fields(&uni.fields)?);
         lines.push(format!("}}\n"));
@@ -233,10 +234,10 @@ impl Generator {
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!(
-            "impl Default for {} {{",
+            "impl PackDefault for {} {{",
             gen_struct_name(&enu.name)
         ));
-        lines.push(format!("    fn default() -> Self {{"));
+        lines.push(format!("    fn pack_default() -> Self {{"));
         #[rustfmt::skip]
         lines.push(format!("        Self::{}", enu.fields.get(0).ok_or("Enum is empty")?.name.to_lowercase().hump()));
         lines.push(format!("    }}"));
@@ -272,7 +273,7 @@ impl Generator {
         // Gen new
         lines.push(format!("impl {} {{", struct_name));
         lines.push(format!("    pub fn new() -> Self {{"));
-        lines.push(format!("        Default::default()"));
+        lines.push(format!("        Self::pack_default()"));
         lines.push(format!("    }}"));
         lines.push(format!("}}\n"));
 
