@@ -1,7 +1,7 @@
 use crate::{
     parser::{
-        ApiAliase, ApiEnum, ApiEnumField, ApiEnumFlag, ApiField, ApiMessage, ApiType, ApiUnion,
-        ApiUnionField, JsonApi,
+        ApiAliase, ApiEnum, ApiEnumField, ApiEnumFlag, ApiField, ApiMessage, ApiService, ApiType,
+        ApiUnion, ApiUnionField, JsonApi,
     },
     utils::Capitalize,
     Result,
@@ -114,6 +114,9 @@ impl Generator {
         for enu in &api.enums {
             lines.extend(Self::gen_enum(enu, &mut generated_type_set)?);
         }
+
+        // Gen services
+        lines.extend(Self::gen_services(&api.name, &api.services)?);
 
         // Join code
         let code = lines.join("\n");
@@ -432,6 +435,62 @@ impl Generator {
             // Not array
             Ok(format!("{}", gen_filed_type(&field.ty)))
         }
+    }
+
+    #[rustfmt::skip]
+    fn gen_services(name: &String, services: &Vec<ApiService>) -> Result<Vec<String>> {
+        let struct_name = format!("{}Service", name).hump();
+        let mut lines: Vec<String> = Vec::new();
+
+        lines.push(format!("pub struct {} {{", struct_name));
+        lines.push(format!("    client: std::sync::Arc<rsvpp::Client>,"));
+        lines.push(format!("}}\n"));
+
+        lines.push(format!("impl {} {{", struct_name));
+        lines.push(format!("    pub fn new(client: std::sync::Arc<rsvpp::Client>) -> Self {{"));
+        lines.push(format!("        Self {{ client }}"));
+        lines.push(format!("    }}\n"));
+        for service in services {
+            lines.extend(Self::gen_service(service)?);
+        }
+        lines.push(format!("}}\n"));
+
+        Ok(lines)
+    }
+
+    #[rustfmt::skip]
+    fn gen_service(service: &ApiService) -> Result<Vec<String>> {
+        let mut lines: Vec<String> = Vec::new();
+        let func_name = &service.req;
+        let req_type = gen_struct_name(&service.req);
+        let rep_type = gen_struct_name(&service.rep);
+
+        if service.is_stream {
+            lines.push(format!("    pub async fn {}(&self, req: {}) -> rsvpp::Result<Vec<{}>> {{", func_name, req_type, rep_type));
+            lines.push(format!("        let ctx = self.client.send_msg(req).await?;"));
+            lines.push(format!("        self.client.send_msg_with_ctx(super::vpe::VlApiControlPingT::new(), ctx).await?;"));
+
+            lines.push(format!("        let mut arr: Vec<{}> = Vec::new();", rep_type));
+            lines.push(format!("        'outer: loop {{"));
+            lines.push(format!("            for entry in self.client.recv(ctx).await? {{"));
+            lines.push(format!("                if entry.header._vl_msg_id == self.client.get_msg_id::<super::vpe::VlApiControlPingReplyT>()? {{"));
+            lines.push(format!("                    break 'outer;"));
+            lines.push(format!("                }}"));
+
+            lines.push(format!("                arr.push({}::unpack(&entry.data, 0)?.0);", rep_type));
+            lines.push(format!("            }}"));
+            lines.push(format!("        }}"));
+            lines.push(format!("        Ok(arr)"));
+            lines.push(format!("    }}\n"));
+        } else {
+            lines.push(format!("    pub async fn {}(&self, req: {}) -> rsvpp::Result<{}> {{", func_name, req_type, rep_type));
+            lines.push(format!("        let ctx = self.client.send_msg(req).await?;"));
+            lines.push(format!("        let rep = self.client.recv_msg(ctx).await?;"));
+            lines.push(format!("        Ok(rep)"));
+            lines.push(format!("    }}\n"));
+        }
+
+        Ok(lines)
     }
 }
 
