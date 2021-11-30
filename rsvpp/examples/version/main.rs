@@ -8,12 +8,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::connect_unix("/tmp/vpp-api.sock___").await?;
 
-    let rep: out::memclnt::VlApiApiVersionsReplyT = client
-        .recv_msg(
-            client
-                .send_msg(out::memclnt::VlApiApiVersionsT::new())
-                .await?,
-        )
+    let rep: out::memclnt::ApiVersionsReply = client
+        .recv_msg(client.send_msg(out::memclnt::ApiVersions::new()).await?)
         .await?;
 
     println!("Version: {:#?}", rep);
