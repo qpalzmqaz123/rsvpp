@@ -118,8 +118,8 @@ impl RecvTask {
 
     async fn run(&mut self) {
         loop {
-            if let Err(_) = self.recv_frame().await {
-                // TODO: Log error
+            if let Err(e) = self.recv_frame().await {
+                log::warn!("Recv frame error {}", e);
                 tokio::time::delay_for(tokio::time::Duration::from_secs(3)).await;
             } else {
                 // Send signal
