@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rep: out::memclnt::VlApiApiVersionsReplyT = client
         .recv_msg(
             client
-                .send_msg(out::memclnt::VlApiApiVersionsT::default())
+                .send_msg(out::memclnt::VlApiApiVersionsT::new())
                 .await?,
         )
         .await?;
