@@ -30,6 +30,8 @@ impl_base_type!(f32);
 impl_base_type!(f64);
 impl_base_type!(isize);
 impl_base_type!(usize);
+impl_base_type!(char);
+impl_base_type!(String);
 
 // Impl static array
 impl<T: PackDefault, const N: usize> PackDefault for [T; N] {
