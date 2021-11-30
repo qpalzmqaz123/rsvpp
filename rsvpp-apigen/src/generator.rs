@@ -439,6 +439,11 @@ impl Generator {
 
     #[rustfmt::skip]
     fn gen_services(name: &String, services: &Vec<ApiService>) -> Result<Vec<String>> {
+        // Skip memclnt
+        if name == "memclnt" {
+            return Ok(Vec::new());
+        }
+
         let struct_name = format!("{}Service", name).hump();
         let mut lines: Vec<String> = Vec::new();
 
