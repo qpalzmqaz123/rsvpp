@@ -1,7 +1,7 @@
 use crate::{
     parser::{
-        ApiAliase, ApiEnum, ApiEnumField, ApiField, ApiMessage, ApiType, ApiUnion, ApiUnionField,
-        JsonApi,
+        ApiAliase, ApiEnum, ApiEnumField, ApiEnumFlag, ApiField, ApiMessage, ApiType, ApiUnion,
+        ApiUnionField, JsonApi,
     },
     utils::Capitalize,
     Result,
@@ -105,6 +105,11 @@ impl Generator {
             lines.extend(Self::gen_union(uni, &mut generated_type_set)?);
         }
 
+        // Gen enum_flags
+        for enum_flag in &api.enum_flags {
+            lines.extend(Self::gen_enum_flag(enum_flag, &mut generated_type_set)?);
+        }
+
         // Gen enums
         for enu in &api.enums {
             lines.extend(Self::gen_enum(enu, &mut generated_type_set)?);
@@ -198,6 +203,32 @@ impl Generator {
                 Self::gen_field_name(&field.name),
                 gen_filed_type(&field.ty)
             ));
+        }
+
+        Ok(lines)
+    }
+
+    fn gen_enum_flag(
+        enum_flag: &ApiEnumFlag,
+        generated_type_set: &mut HashSet<String>,
+    ) -> Result<Vec<String>> {
+        ensure_not_duplicate!(gen_struct_name(&enum_flag.name), generated_type_set);
+
+        let mut lines: Vec<String> = Vec::new();
+
+        // lines.push(format!("#[derive(Pack, Debug)]"));
+        // lines.push(format!("#[pack_type(\"{}\")]", enu.ty));
+        // lines.push(format!("pub enum {} {{", gen_struct_name(&enu.name)));
+        // lines.extend(Self::gen_enum_fields(&enu.fields)?);
+        // lines.push(format!("}}\n"));
+
+        // lines.extend(Self::gen_enum_field_impl(&enu)?);
+
+        #[rustfmt::skip]
+        lines.push(format!("type {} = {};\n", gen_struct_name(&enum_flag.name), enum_flag.ty));
+        for field in &enum_flag.fields {
+            #[rustfmt::skip]
+            lines.push(format!("const {}: {} = {};\n", field.name, enum_flag.ty, field.value));
         }
 
         Ok(lines)

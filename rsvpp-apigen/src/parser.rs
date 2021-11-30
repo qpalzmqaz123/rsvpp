@@ -54,6 +54,19 @@ pub struct ApiEnum {
 }
 
 #[derive(Debug)]
+pub struct ApiEnumFlagField {
+    pub name: String,
+    pub value: usize,
+}
+
+#[derive(Debug)]
+pub struct ApiEnumFlag {
+    pub name: String,
+    pub ty: String,
+    pub fields: Vec<ApiEnumFlagField>,
+}
+
+#[derive(Debug)]
 pub struct ApiService {
     pub req: String,
     pub rep: String,
@@ -74,6 +87,7 @@ pub struct JsonApi {
     pub messages: Vec<ApiMessage>,
     pub unions: Vec<ApiUnion>,
     pub enums: Vec<ApiEnum>,
+    pub enum_flags: Vec<ApiEnumFlag>,
     pub services: Vec<ApiService>,
     pub aliases: Vec<ApiAliase>,
 }
@@ -87,6 +101,7 @@ impl JsonApi {
             messages: Vec::new(),
             unions: Vec::new(),
             enums: Vec::new(),
+            enum_flags: Vec::new(),
             services: Vec::new(),
             aliases: Vec::new(),
         };
@@ -95,6 +110,7 @@ impl JsonApi {
         instance.parse_messages(&value)?;
         instance.parse_unions(&value)?;
         instance.parse_enums(&value)?;
+        instance.parse_enum_flags(&value)?;
         instance.parse_services(&value)?;
         instance.parse_aliases(&value)?;
 
@@ -261,6 +277,62 @@ impl JsonApi {
             }
         } else {
             return Err("Enums not array".into());
+        }
+
+        Ok(())
+    }
+
+    fn parse_enum_flags(&mut self, value: &Value) -> Result<()> {
+        if let Some(Value::Array(enum_flags)) = value.get("enumflags") {
+            for enum_flag in enum_flags {
+                let mut name = "";
+                let mut ty = "";
+                let mut fields: Vec<ApiEnumFlagField> = Vec::new();
+
+                for item in enum_flag.as_array().ok_or("EnumFlag must be array")? {
+                    // Parse name
+                    if let Some(n) = item.as_str() {
+                        name = n;
+                    }
+
+                    // Parse type
+                    if let Some(obj) = item.as_object() {
+                        if let Some(Value::String(t)) = obj.get("enumtype") {
+                            ty = t;
+                        } else {
+                            return Err("EnumFlag object missing type".into());
+                        }
+                    }
+
+                    // Parse field
+                    if let Some(arr) = item.as_array() {
+                        if let Some(Value::String(name)) = arr.get(0) {
+                            if let Some(Value::Number(n)) = arr.get(1) {
+                                if let Some(n) = n.as_u64() {
+                                    fields.push(ApiEnumFlagField {
+                                        name: name.to_string(),
+                                        value: n as usize,
+                                    });
+                                } else {
+                                    return Err("EnumFlag field array index 1 must be u64".into());
+                                }
+                            } else {
+                                return Err("EnumFlag field array index 1 must be number".into());
+                            }
+                        } else {
+                            return Err("EnumFlag field array index 0 must be string".into());
+                        }
+                    }
+                }
+
+                self.enum_flags.push(ApiEnumFlag {
+                    name: name.to_string(),
+                    ty: ty.to_string(),
+                    fields,
+                });
+            }
+        } else {
+            return Err("EnumFlags not array".into());
         }
 
         Ok(())
