@@ -128,9 +128,7 @@ impl RecvTask {
                 // Send signal
                 log::trace!("Send signal, rx count: {}", self.signal_tx.receiver_count());
                 if let Err(e) = self.signal_tx.send(()) {
-                    // If error occurred, terminate task
-                    log::error!("RecvTask send signal error: {:?}", e);
-                    break;
+                    log::warn!("RecvTask send signal error: {:?}", e);
                 }
             }
         }
