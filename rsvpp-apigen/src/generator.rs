@@ -216,14 +216,6 @@ impl Generator {
 
         let mut lines: Vec<String> = Vec::new();
 
-        // lines.push(format!("#[derive(Pack, Debug)]"));
-        // lines.push(format!("#[pack_type(\"{}\")]", enu.ty));
-        // lines.push(format!("pub enum {} {{", gen_struct_name(&enu.name)));
-        // lines.extend(Self::gen_enum_fields(&enu.fields)?);
-        // lines.push(format!("}}\n"));
-
-        // lines.extend(Self::gen_enum_field_impl(&enu)?);
-
         #[rustfmt::skip]
         lines.push(format!("type {} = {};\n", gen_struct_name(&enum_flag.name), enum_flag.ty));
         for field in &enum_flag.fields {
