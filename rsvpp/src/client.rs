@@ -66,7 +66,7 @@ impl Client {
         Ok(self.internal_send_msg(msg, ctx).await?)
     }
 
-    pub async fn recv_msg<T>(&mut self, ctx: u32) -> Result<T>
+    pub async fn recv_msg<T>(&self, ctx: u32) -> Result<T>
     where
         T: Pack + MessageName + MessageId + MessageContext,
     {
@@ -75,7 +75,7 @@ impl Client {
         Ok(self.sess.recv_single_msg(ctx, msg_id).await?)
     }
 
-    pub async fn recv(&mut self, ctx: u32) -> Result<Vec<RecvEntry>> {
+    pub async fn recv(&self, ctx: u32) -> Result<Vec<RecvEntry>> {
         Ok(self.sess.recv(ctx).await?)
     }
 

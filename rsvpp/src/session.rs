@@ -24,21 +24,21 @@ pub struct RecvEntry {
 pub struct Session {
     transport: Arc<dyn Transport + Sync + Send>,
     recv_cache: RecvCacheT,
-    signal_rx: broadcast::Receiver<()>,
+    signal_tx: broadcast::Sender<()>,
 }
 
 impl Session {
     pub fn new(transport: Arc<dyn Transport + Sync + Send>) -> Self {
-        let (signal_tx, signal_rx) = broadcast::channel::<()>(16);
+        let (signal_tx, _) = broadcast::channel::<()>(16);
         let recv_cache = Arc::new(Mutex::new(HashMap::new()));
 
         // Create recv task
-        RecvTask::start(recv_cache.clone(), transport.clone(), signal_tx);
+        RecvTask::start(recv_cache.clone(), transport.clone(), signal_tx.clone());
 
         Self {
             transport,
             recv_cache,
-            signal_rx,
+            signal_tx,
         }
     }
 
@@ -50,7 +50,7 @@ impl Session {
         Ok(())
     }
 
-    pub async fn recv_single_msg<T: Pack>(&mut self, ctx: u32, msg_id: u16) -> Result<T> {
+    pub async fn recv_single_msg<T: Pack>(&self, ctx: u32, msg_id: u16) -> Result<T> {
         // Recv data
         let mut entries = self.recv(ctx).await?;
 
@@ -75,7 +75,9 @@ impl Session {
         Ok(data)
     }
 
-    pub async fn recv(&mut self, ctx: u32) -> Result<Vec<RecvEntry>> {
+    pub async fn recv(&self, ctx: u32) -> Result<Vec<RecvEntry>> {
+        log::trace!("Recv msg from ctx {}", ctx);
+        let mut signal_rx = self.signal_tx.subscribe();
         let entries = loop {
             // Get message from cache
             if let Some(entries) = self.recv_cache.lock().await.remove(&ctx) {
@@ -83,7 +85,8 @@ impl Session {
             }
 
             // Wait signal
-            self.signal_rx
+            log::trace!("Wait signal, ctx: {}", ctx);
+            signal_rx
                 .recv()
                 .await
                 .map_err(|e| Error::internal(format!("Recv signal error: {}", e)))?;
@@ -123,8 +126,10 @@ impl RecvTask {
                 tokio::time::delay_for(tokio::time::Duration::from_secs(3)).await;
             } else {
                 // Send signal
-                if let Err(_) = self.signal_tx.send(()) {
-                    // If other error occurred, terminate task
+                log::trace!("Send signal, rx count: {}", self.signal_tx.receiver_count());
+                if let Err(e) = self.signal_tx.send(()) {
+                    // If error occurred, terminate task
+                    log::error!("RecvTask send signal error: {:?}", e);
                     break;
                 }
             }

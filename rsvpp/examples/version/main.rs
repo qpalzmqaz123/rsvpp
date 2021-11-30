@@ -6,7 +6,7 @@ use rsvpp::Client;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let mut client = Client::connect_unix("/tmp/vpp-api.sock___").await?;
+    let client = Client::connect_unix("/tmp/vpp-api.sock___").await?;
 
     let rep: out::memclnt::VlApiApiVersionsReplyT = client
         .recv_msg(
