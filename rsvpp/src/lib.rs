@@ -7,6 +7,7 @@ mod transport;
 
 pub use client::Client;
 pub use error::Error;
+pub use lazy_static;
 pub use pack;
 pub use session::{RecvEntry, Session};
 pub use transport::Transport;

@@ -39,14 +39,20 @@ macro_rules! ensure_not_duplicate {
 pub struct Generator {
     in_dir: String,
     out_dir: String,
+    error_header_file: String,
 }
 
 impl Generator {
-    pub fn new(out_dir: String, in_dir: String) -> Result<Self> {
-        Ok(Self { in_dir, out_dir })
+    pub fn new(out_dir: String, in_dir: String, error_header_file: String) -> Result<Self> {
+        Ok(Self {
+            in_dir,
+            out_dir,
+            error_header_file,
+        })
     }
 
     pub fn gen(&mut self) -> Result<()> {
+        // Parse api
         let paths = glob::glob(&format!("{}/**/*.api.json", self.in_dir))?;
         let mut apis: Vec<JsonApi> = Vec::new();
         for path in paths {
@@ -56,10 +62,19 @@ impl Generator {
             apis.push(self.parse_single_file(file)?);
         }
 
+        // Generate api
         for api in apis {
             println!("Generate rust code from api: '{}'", api.name);
             Self::gen_single_api(&api, &format!("{}/{}.rs", self.out_dir, api.name))?;
         }
+
+        // Parse error
+        println!("Parse error header file");
+        let err_pairs = Self::parse_error_header_file(&self.error_header_file)?;
+
+        // Generate error
+        println!("Generate error map");
+        Self::gen_error_map(err_pairs, &self.out_dir)?;
 
         Ok(())
     }
@@ -74,6 +89,22 @@ impl Generator {
             .map_err(|e| format!("Decode file '{}', error: {}", file, e))?;
 
         Ok(api)
+    }
+
+    fn parse_error_header_file(file: &str) -> Result<Vec<(i32, String)>> {
+        let buf = std::fs::read(file).map_err(|e| format!("Read '{}' error: {}", file, e))?;
+        let content = std::str::from_utf8(&buf)?;
+        let err_regex = regex::Regex::new(r#"_\([A-Z_]+,\s*(\-?\d+),\s*"(.*)""#)?;
+        let mut arr: Vec<(i32, String)> = Vec::new();
+        for line in content.split("\n") {
+            if let Some(cap) = err_regex.captures(line) {
+                let err_code: i32 = cap[1].parse()?;
+                let err_msg: String = cap[2].to_string();
+                arr.push((err_code, err_msg));
+            }
+        }
+
+        Ok(arr)
     }
 
     fn gen_single_api(api: &JsonApi, file: &str) -> Result<()> {
@@ -123,6 +154,29 @@ impl Generator {
 
         // Write file
         std::fs::write(file, code)?;
+
+        Ok(())
+    }
+
+    fn gen_error_map(errs: Vec<(i32, String)>, outdir: &str) -> Result<()> {
+        let mut lines: Vec<String> = Vec::new();
+
+        lines.push(format!("use std::collections::HashMap;\n"));
+        lines.push(format!("rsvpp::lazy_static::lazy_static!("));
+        lines.push(format!(
+            "    static ref ERROR_MAP: HashMap<i32, &'static str> = {{"
+        ));
+        lines.push(format!("        let mut m = HashMap::new();"));
+        for pair in errs {
+            lines.push(format!("        m.insert({}, \"{}\");", pair.0, pair.1));
+        }
+        lines.push(format!("        m"));
+        lines.push(format!("    }};"));
+        lines.push(format!(");\n"));
+
+        let content = lines.join("\n");
+        std::fs::write(format!("{}/error_map.rs", outdir), content)
+            .map_err(|e| format!("Write error map file error: {}", e))?;
 
         Ok(())
     }
