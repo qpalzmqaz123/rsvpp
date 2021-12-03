@@ -16,6 +16,7 @@ pub enum ErrorKind {
     Argument,
     Internal,
     MsgIdMismatch,
+    VppApi,
 }
 
 #[derive(Debug)]
@@ -36,6 +37,7 @@ impl Error {
     lazy_error_impl! {argument, Argument}
     lazy_error_impl! {internal, Internal}
     lazy_error_impl! {msg_id_mismatch, Internal}
+    lazy_error_impl! {vpp_api, VppApi}
 }
 
 impl From<Box<dyn std::error::Error>> for Error {

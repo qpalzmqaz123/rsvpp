@@ -107,14 +107,28 @@ impl Generator {
         Ok(arr)
     }
 
+    #[rustfmt::skip]
     fn gen_single_api(api: &JsonApi, file: &str) -> Result<()> {
         let mut lines: Vec<String> = Vec::new();
         let mut generated_type_set: HashSet<String> = HashSet::new();
+        let has_retval_type_set: HashSet<String> = Self::get_has_retval_has_set(api)?;
 
         // Gen headers
         lines.push(format!("#![allow(unused)]\n"));
         #[rustfmt::skip]
         lines.push(format!("use rsvpp::pack::{{self, Pack, PackDefault, pack_union}};\n"));
+
+        // Gen check error function
+        lines.push(format!("fn check_error(retval: i32) -> rsvpp::Result<()> {{"));
+        lines.push(format!("    if retval != 0 {{"));
+        lines.push(format!("        if let Some(msg) = super::error_map::ERROR_MAP.get(&retval) {{"));
+        lines.push(format!("            return Err(rsvpp::Error::vpp_api(format!(\"code: {{}}, msg: '{{}}'\", retval, msg)));"));
+        lines.push(format!("        }} else {{"));
+        lines.push(format!("            return Err(rsvpp::Error::vpp_api(format!(\"code: {{}}, msg: NULL\", retval)));"));
+        lines.push(format!("        }}"));
+        lines.push(format!("    }}"));
+        lines.push(format!("    Ok(())"));
+        lines.push(format!("}}\n"));
 
         // Gen alias
         for alias in &api.aliases {
@@ -147,7 +161,11 @@ impl Generator {
         }
 
         // Gen services
-        lines.extend(Self::gen_services(&api.name, &api.services)?);
+        lines.extend(Self::gen_services(
+            &api.name,
+            &api.services,
+            &has_retval_type_set,
+        )?);
 
         // Join code
         let code = lines.join("\n");
@@ -158,13 +176,31 @@ impl Generator {
         Ok(())
     }
 
+    fn get_has_retval_has_set(api: &JsonApi) -> Result<HashSet<String>> {
+        let mut set = HashSet::new();
+
+        for ty in &api.types {
+            if ty.fields.iter().any(|field| field.name == "retval") {
+                set.insert(gen_struct_name(&ty.name));
+            }
+        }
+
+        for msg in &api.messages {
+            if msg.fields.iter().any(|field| field.name == "retval") {
+                set.insert(gen_struct_name(&msg.name));
+            }
+        }
+
+        Ok(set)
+    }
+
     fn gen_error_map(errs: Vec<(i32, String)>, outdir: &str) -> Result<()> {
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("use std::collections::HashMap;\n"));
         lines.push(format!("rsvpp::lazy_static::lazy_static!("));
         lines.push(format!(
-            "    static ref ERROR_MAP: HashMap<i32, &'static str> = {{"
+            "    pub static ref ERROR_MAP: HashMap<i32, &'static str> = {{"
         ));
         lines.push(format!("        let mut m = HashMap::new();"));
         for pair in errs {
@@ -492,7 +528,7 @@ impl Generator {
     }
 
     #[rustfmt::skip]
-    fn gen_services(name: &String, services: &Vec<ApiService>) -> Result<Vec<String>> {
+    fn gen_services(name: &String, services: &Vec<ApiService>, has_retval_type_set: &HashSet<String>) -> Result<Vec<String>> {
         // Skip memclnt
         if name == "memclnt" {
             return Ok(Vec::new());
@@ -510,7 +546,7 @@ impl Generator {
         lines.push(format!("        Self {{ client }}"));
         lines.push(format!("    }}\n"));
         for service in services {
-            lines.extend(Self::gen_service(service)?);
+            lines.extend(Self::gen_service(service, has_retval_type_set)?);
         }
         lines.push(format!("}}\n"));
 
@@ -518,7 +554,7 @@ impl Generator {
     }
 
     #[rustfmt::skip]
-    fn gen_service(service: &ApiService) -> Result<Vec<String>> {
+    fn gen_service(service: &ApiService, has_retval_type_set: &HashSet<String>) -> Result<Vec<String>> {
         let mut lines: Vec<String> = Vec::new();
         let func_name = &service.req;
         let req_type = gen_struct_name(&service.req);
@@ -533,10 +569,16 @@ impl Generator {
             lines.push(format!("        'outer: loop {{"));
             lines.push(format!("            for entry in self.client.recv(ctx).await? {{"));
             lines.push(format!("                if entry.header._vl_msg_id == self.client.get_msg_id::<super::vpe::ControlPingReply>()? {{"));
+            lines.push(format!("                    let rep = super::vpe::ControlPingReply::unpack(&entry.data, 0)?.0;"));
+            lines.push(format!("                    check_error(rep.retval() as i32)?;"));
             lines.push(format!("                    break 'outer;"));
             lines.push(format!("                }}"));
 
-            lines.push(format!("                arr.push({}::unpack(&entry.data, 0)?.0);", rep_type));
+            lines.push(format!("                let rep = {}::unpack(&entry.data, 0)?.0;", rep_type));
+            if has_retval_type_set.contains(&rep_type) {
+                lines.push(format!("                check_error(rep.retval() as i32)?;"));
+            }
+            lines.push(format!("                arr.push(rep)"));
             lines.push(format!("            }}"));
             lines.push(format!("        }}"));
             lines.push(format!("        Ok(arr)"));
@@ -544,7 +586,10 @@ impl Generator {
         } else {
             lines.push(format!("    pub async fn {}(&self, req: {}) -> rsvpp::Result<{}> {{", func_name, req_type, rep_type));
             lines.push(format!("        let ctx = self.client.send_msg(req).await?;"));
-            lines.push(format!("        let rep = self.client.recv_msg(ctx).await?;"));
+            lines.push(format!("        let rep: {} = self.client.recv_msg(ctx).await?;", rep_type));
+            if has_retval_type_set.contains(&rep_type) {
+                lines.push(format!("        check_error(rep.retval() as i32)?;"));
+            }
             lines.push(format!("        Ok(rep)"));
             lines.push(format!("    }}\n"));
         }
