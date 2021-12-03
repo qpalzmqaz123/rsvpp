@@ -94,7 +94,7 @@ impl Generator {
     fn parse_error_header_file(file: &str) -> Result<Vec<(i32, String)>> {
         let buf = std::fs::read(file).map_err(|e| format!("Read '{}' error: {}", file, e))?;
         let content = std::str::from_utf8(&buf)?;
-        let err_regex = regex::Regex::new(r#"_\([A-Z_]+,\s*(\-?\d+),\s*"(.*)""#)?;
+        let err_regex = regex::Regex::new(r#"_\([A-Z_0-9a-z]+,\s*(\-?\d+),\s*"(.*)""#)?;
         let mut arr: Vec<(i32, String)> = Vec::new();
         for line in content.split("\n") {
             if let Some(cap) = err_regex.captures(line) {
