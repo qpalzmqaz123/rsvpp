@@ -51,7 +51,7 @@ pub fn safe_slice<T>(slice: &[T], start: usize, n: Option<usize>) -> Result<&[T]
 
         Ok(&slice[start..start + n])
     } else {
-        if start >= slice.len() {
+        if start > slice.len() {
             return Err("Slice out of range".into());
         }
 
