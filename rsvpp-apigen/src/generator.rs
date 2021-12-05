@@ -254,6 +254,7 @@ impl Generator {
         Ok(lines)
     }
 
+    #[rustfmt::skip]
     fn gen_message(
         msg: &ApiMessage,
         generated_type_set: &mut HashSet<String>,
@@ -266,6 +267,13 @@ impl Generator {
         lines.push(format!("#[packed]"));
         lines.push(format!("pub struct {} {{", gen_struct_name(&msg.name)));
         lines.extend(Self::gen_fields(&msg.fields)?);
+        lines.push(format!("}}\n"));
+
+        // Gen msg crc
+        lines.push(format!("impl rsvpp::message::MessageCrc for {} {{", gen_struct_name(&msg.name)));
+        lines.push(format!("    fn crc() -> &'static str {{"));
+        lines.push(format!("        \"{}\"", msg.extra.crc));
+        lines.push(format!("    }}"));
         lines.push(format!("}}\n"));
 
         lines.extend(Self::gen_field_impls(&msg.name, &msg.fields)?);

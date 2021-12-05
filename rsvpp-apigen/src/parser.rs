@@ -433,6 +433,12 @@ impl JsonApi {
             .ok_or("Crc must be str")?
             .to_string();
 
-        Ok(ApiMessageExtra { crc })
+        if crc.starts_with("0x") {
+            Ok(ApiMessageExtra {
+                crc: crc[2..].to_string(),
+            })
+        } else {
+            Err("Crc must starts with '0x'".into())
+        }
     }
 }

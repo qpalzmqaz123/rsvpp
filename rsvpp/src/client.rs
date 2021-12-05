@@ -8,7 +8,7 @@ use crate::{
         VlApiSockclntCreateReplyT, VlApiSockclntCreateT, VL_API_SOCK_CLNT_CREATE_MSG_ID,
         VL_API_SOCK_CLNT_CREATE_REP_MSG_ID,
     },
-    message::{Message, MessageClientId, MessageContext, MessageId, MessageName},
+    message::{Message, MessageClientId, MessageContext, MessageCrc, MessageId, MessageName},
     transport, Error, RecvEntry, Result, Session, CLIENT_NAME,
 };
 
@@ -53,7 +53,7 @@ impl Client {
 
     pub async fn send_msg<T>(&self, msg: T) -> Result<u32>
     where
-        T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
+        T: Pack + MessageName + MessageId + MessageContext + MessageClientId + MessageCrc,
     {
         let ctx = self.next_ctx().await;
         Ok(self.internal_send_msg(msg, ctx).await?)
@@ -61,14 +61,14 @@ impl Client {
 
     pub async fn send_msg_with_ctx<T>(&self, msg: T, ctx: u32) -> Result<u32>
     where
-        T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
+        T: Pack + MessageName + MessageId + MessageContext + MessageClientId + MessageCrc,
     {
         Ok(self.internal_send_msg(msg, ctx).await?)
     }
 
     pub async fn recv_msg<T>(&self, ctx: u32) -> Result<T>
     where
-        T: Pack + MessageName + MessageId + MessageContext,
+        T: Pack + MessageName + MessageId + MessageContext + MessageCrc,
     {
         let msg_id = self.get_msg_id::<T>()?;
 
@@ -81,7 +81,7 @@ impl Client {
 
     async fn internal_send_msg<T>(&self, msg: T, ctx: u32) -> Result<u32>
     where
-        T: Pack + MessageName + MessageId + MessageContext + MessageClientId,
+        T: Pack + MessageName + MessageId + MessageContext + MessageClientId + MessageCrc,
     {
         let msg_id = self.get_msg_id::<T>()?;
         let msg = msg
@@ -96,7 +96,7 @@ impl Client {
 
     pub fn get_msg_id<T>(&self) -> Result<u16>
     where
-        T: MessageName,
+        T: MessageName + MessageCrc,
     {
         let name = T::message_name();
         let info = self.msg_name_map.get(&name).ok_or(Error::argument(format!(
@@ -104,7 +104,14 @@ impl Client {
             name
         )))?;
 
-        // TODO: Validate crc
+        // Validate crc
+        if info.crc != T::crc() {
+            return Err(Error::crc_mismatch(format!(
+                "Crc mismatch, generated: {}, cache: {}",
+                T::crc(),
+                info.crc
+            )));
+        }
 
         Ok(info.id)
     }

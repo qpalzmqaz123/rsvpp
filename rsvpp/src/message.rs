@@ -21,6 +21,10 @@ pub trait MessageClientId {
     fn set_client_index(self, idx: u32) -> Self;
 }
 
+pub trait MessageCrc {
+    fn crc() -> &'static str;
+}
+
 #[derive(Debug, Default, Pack)]
 pub struct MessageHeader {
     pub q: u64,

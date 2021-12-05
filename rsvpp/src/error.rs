@@ -16,6 +16,7 @@ pub enum ErrorKind {
     Argument,
     Internal,
     MsgIdMismatch,
+    CrcMismatch,
     VppApi,
 }
 
@@ -36,7 +37,8 @@ impl std::error::Error for Error {}
 impl Error {
     lazy_error_impl! {argument, Argument}
     lazy_error_impl! {internal, Internal}
-    lazy_error_impl! {msg_id_mismatch, Internal}
+    lazy_error_impl! {msg_id_mismatch, MsgIdMismatch}
+    lazy_error_impl! {crc_mismatch, CrcMismatch}
     lazy_error_impl! {vpp_api, VppApi}
 }
 
