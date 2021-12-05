@@ -582,6 +582,10 @@ impl Generator {
             lines.push(format!("                    break 'outer;"));
             lines.push(format!("                }}"));
 
+            lines.push(format!("                if entry.header._vl_msg_id != self.client.get_msg_id::<{}>()? {{", rep_type));
+            lines.push(format!("                    return Err(rsvpp::Error::msg_id_mismatch(\"Message id mismatch in {}\"));", func_name));
+            lines.push(format!("                }}"));
+
             lines.push(format!("                let rep = {}::unpack(&entry.data, 0)?.0;", rep_type));
             if has_retval_type_set.contains(&rep_type) {
                 lines.push(format!("                check_error(rep.retval() as i32)?;"));
