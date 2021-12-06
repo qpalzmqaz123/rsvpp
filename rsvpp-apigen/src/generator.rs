@@ -43,11 +43,11 @@ pub struct Generator {
 }
 
 impl Generator {
-    pub fn new(out_dir: String, in_dir: String, error_header_file: String) -> Result<Self> {
+    pub fn new<S: ToString>(out_dir: S, in_dir: S, error_header_file: S) -> Result<Self> {
         Ok(Self {
-            in_dir,
-            out_dir,
-            error_header_file,
+            in_dir: in_dir.to_string(),
+            out_dir: out_dir.to_string(),
+            error_header_file: error_header_file.to_string(),
         })
     }
 
