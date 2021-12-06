@@ -22,13 +22,13 @@ pub struct RecvEntry {
 }
 
 pub struct Session {
-    transport: Arc<dyn Transport + Sync + Send>,
+    transport: Arc<dyn Transport>,
     recv_cache: RecvCacheT,
     signal_tx: broadcast::Sender<()>,
 }
 
 impl Session {
-    pub fn new(transport: Arc<dyn Transport + Sync + Send>) -> Self {
+    pub fn new(transport: Arc<dyn Transport>) -> Self {
         let (signal_tx, _) = broadcast::channel::<()>(16);
         let recv_cache = Arc::new(Mutex::new(HashMap::new()));
 
@@ -98,14 +98,14 @@ impl Session {
 
 struct RecvTask {
     cache: RecvCacheT,
-    transport: Arc<dyn Transport + Sync + Send>,
+    transport: Arc<dyn Transport>,
     signal_tx: broadcast::Sender<()>,
 }
 
 impl RecvTask {
     pub fn start(
         cache: RecvCacheT,
-        transport: Arc<dyn Transport + Sync + Send>,
+        transport: Arc<dyn Transport>,
         signal_tx: broadcast::Sender<()>,
     ) {
         let mut instance = Self {
