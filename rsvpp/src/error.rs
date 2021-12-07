@@ -18,6 +18,7 @@ pub enum ErrorKind {
     MsgIdMismatch,
     CrcMismatch,
     VppApi,
+    Timeout,
 }
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ impl Error {
     lazy_error_impl! {msg_id_mismatch, MsgIdMismatch}
     lazy_error_impl! {crc_mismatch, CrcMismatch}
     lazy_error_impl! {vpp_api, VppApi}
+    lazy_error_impl! {timeout, Timeout}
 }
 
 impl From<Box<dyn std::error::Error>> for Error {

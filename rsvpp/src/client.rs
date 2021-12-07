@@ -12,6 +12,8 @@ use crate::{
     transport, Error, RecvEntry, Result, Session, CLIENT_NAME,
 };
 
+const DEFAULT_TIMEOUT_MS: u64 = 3 * 1000;
+
 #[derive(Debug)]
 pub struct MessageEntry {
     id: u16,
@@ -25,6 +27,7 @@ pub struct Client {
     client_index: u32,
     msg_id_map: HashMap<u16, Arc<MessageEntry>>,
     msg_name_map: HashMap<String, Arc<MessageEntry>>,
+    timeout: u64,
 }
 
 impl Client {
@@ -43,12 +46,17 @@ impl Client {
             client_index: 0,
             msg_id_map: HashMap::new(),
             msg_name_map: HashMap::new(),
+            timeout: DEFAULT_TIMEOUT_MS,
         };
 
         // Init client
         client.init().await?;
 
         Ok(client)
+    }
+
+    pub fn set_timeout(&mut self, ms: u64) {
+        self.timeout = ms;
     }
 
     pub async fn send_msg<T>(&self, msg: T) -> Result<u32>
@@ -72,11 +80,11 @@ impl Client {
     {
         let msg_id = self.get_msg_id::<T>()?;
 
-        Ok(self.sess.recv_single_msg(ctx, msg_id).await?)
+        Ok(self.sess.recv_single_msg(ctx, msg_id, self.timeout).await?)
     }
 
     pub async fn recv(&self, ctx: u32) -> Result<Vec<RecvEntry>> {
-        Ok(self.sess.recv(ctx).await?)
+        Ok(self.sess.recv(ctx, self.timeout).await?)
     }
 
     async fn internal_send_msg<T>(&self, msg: T, ctx: u32) -> Result<u32>
@@ -89,7 +97,7 @@ impl Client {
             .set_context(ctx)
             .set_client_index(self.client_index);
 
-        self.sess.send_msg(Message::new(msg)).await?;
+        self.sess.send_msg(Message::new(msg), self.timeout).await?;
 
         Ok(ctx)
     }
@@ -128,14 +136,16 @@ impl Client {
             name: CLIENT_NAME.to_string(),
         });
         log::trace!("Send sockclnt create");
-        self.sess.send_msg(sock_clnt_create_msg).await?;
+        self.sess
+            .send_msg(sock_clnt_create_msg, self.timeout)
+            .await?;
 
         // Get vpp msg table
         // XXX: sockclnt reply context is 0
         log::trace!("Wait sockclnt create reply");
         let sock_clnt_rep_msg: VlApiSockclntCreateReplyT = self
             .sess
-            .recv_single_msg(0, VL_API_SOCK_CLNT_CREATE_REP_MSG_ID)
+            .recv_single_msg(0, VL_API_SOCK_CLNT_CREATE_REP_MSG_ID, self.timeout)
             .await?;
 
         // Update client index

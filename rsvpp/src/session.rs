@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use tokio::sync::{broadcast, Mutex};
+use tokio::{
+    sync::{broadcast, Mutex},
+    time,
+};
 
 use crate::{
     hard_coded_message::ApiMessageReplyHeader,
@@ -42,17 +45,18 @@ impl Session {
         }
     }
 
-    pub async fn send_msg<T: Pack>(&self, mut msg: Message<T>) -> Result<()> {
+    pub async fn send_msg<T: Pack>(&self, mut msg: Message<T>, timeout: u64) -> Result<()> {
         let buf = msg.encode()?;
-        // TODO: Add timeout
-        self.transport.write(&buf).await?;
 
-        Ok(())
+        tokio::select! {
+            _ = time::delay_for(time::Duration::from_millis(timeout)) => Err(Error::timeout("Send timeout")),
+            res = self.transport.write(&buf) => res,
+        }
     }
 
-    pub async fn recv_single_msg<T: Pack>(&self, ctx: u32, msg_id: u16) -> Result<T> {
+    pub async fn recv_single_msg<T: Pack>(&self, ctx: u32, msg_id: u16, timeout: u64) -> Result<T> {
         // Recv data
-        let mut entries = self.recv(ctx).await?;
+        let mut entries = self.recv(ctx, timeout).await?;
 
         // Verify entries length
         if entries.len() != 1 {
@@ -75,7 +79,14 @@ impl Session {
         Ok(data)
     }
 
-    pub async fn recv(&self, ctx: u32) -> Result<Vec<RecvEntry>> {
+    pub async fn recv(&self, ctx: u32, timeout: u64) -> Result<Vec<RecvEntry>> {
+        tokio::select! {
+            _ = time::delay_for(time::Duration::from_millis(timeout)) => Err(Error::timeout("Recv timeout")),
+            res = self.internal_recv(ctx) => res,
+        }
+    }
+
+    async fn internal_recv(&self, ctx: u32) -> Result<Vec<RecvEntry>> {
         log::trace!("Recv msg from ctx {}", ctx);
         let mut signal_rx = self.signal_tx.subscribe();
         let entries = loop {
