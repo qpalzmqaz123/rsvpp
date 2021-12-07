@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use tokio::{
-    sync::{broadcast, Mutex},
+    sync::{broadcast, mpsc, Mutex},
     time,
 };
 
@@ -28,20 +28,28 @@ pub struct Session {
     transport: Arc<dyn Transport>,
     recv_cache: RecvCacheT,
     signal_tx: broadcast::Sender<()>,
+    recv_task_quit_tx: mpsc::Sender<()>,
 }
 
 impl Session {
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         let (signal_tx, _) = broadcast::channel::<()>(16);
+        let (quit_tx, quit_rx) = mpsc::channel::<()>(1);
         let recv_cache = Arc::new(Mutex::new(HashMap::new()));
 
         // Create recv task
-        RecvTask::start(recv_cache.clone(), transport.clone(), signal_tx.clone());
+        RecvTask::start(
+            recv_cache.clone(),
+            transport.clone(),
+            signal_tx.clone(),
+            quit_rx,
+        );
 
         Self {
             transport,
             recv_cache,
             signal_tx,
+            recv_task_quit_tx: quit_tx,
         }
     }
 
@@ -107,6 +115,13 @@ impl Session {
     }
 }
 
+impl Drop for Session {
+    fn drop(&mut self) {
+        log::debug!("Send quit signal to RecvTask");
+        self.recv_task_quit_tx.try_send(()).ok();
+    }
+}
+
 struct RecvTask {
     cache: RecvCacheT,
     transport: Arc<dyn Transport>,
@@ -118,6 +133,7 @@ impl RecvTask {
         cache: RecvCacheT,
         transport: Arc<dyn Transport>,
         signal_tx: broadcast::Sender<()>,
+        quit_rx: mpsc::Receiver<()>,
     ) {
         let mut instance = Self {
             cache,
@@ -126,22 +142,30 @@ impl RecvTask {
         };
 
         tokio::spawn(async move {
-            instance.run().await;
+            instance.run(quit_rx).await;
         });
     }
 
-    async fn run(&mut self) {
+    async fn run(&mut self, mut quit_rx: mpsc::Receiver<()>) {
         loop {
-            if let Err(e) = self.recv_frame().await {
-                log::warn!("Recv frame error {}", e);
-                tokio::time::delay_for(tokio::time::Duration::from_secs(3)).await;
-            } else {
-                // Send signal
-                log::trace!("Send signal, rx count: {}", self.signal_tx.receiver_count());
-                if let Err(_) = self.signal_tx.send(()) {
-                    // Ignore
+            tokio::select! {
+                _ = quit_rx.recv() => {
+                    log::debug!("Quit RecvTask");
+                    break;
                 }
-            }
+                res = self.recv_frame() => {
+                    if let Err(e) = res {
+                        log::warn!("Recv frame error {}", e);
+                        tokio::time::delay_for(tokio::time::Duration::from_secs(3)).await;
+                    } else {
+                        // Send signal
+                        log::trace!("Send signal, rx count: {}", self.signal_tx.receiver_count());
+                        if let Err(_) = self.signal_tx.send(()) {
+                            // Ignore
+                        }
+                    }
+                }
+            };
         }
     }
 
