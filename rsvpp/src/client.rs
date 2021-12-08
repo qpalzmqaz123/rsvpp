@@ -17,7 +17,6 @@ const DEFAULT_TIMEOUT_MS: u64 = 3 * 1000;
 #[derive(Debug)]
 pub struct MessageEntry {
     id: u16,
-    name: String,
     crc: String,
 }
 
@@ -170,11 +169,7 @@ impl Client {
             };
             let name = entry.name[0..last_underline_index].to_string();
             let crc = entry.name[last_underline_index + 1..].to_string();
-            let msg_entry = Arc::new(MessageEntry {
-                id,
-                name: name.clone(),
-                crc,
-            });
+            let msg_entry = Arc::new(MessageEntry { id, crc });
 
             self.msg_name_map.insert(name, msg_entry.clone());
             self.msg_id_map.insert(id, msg_entry);
