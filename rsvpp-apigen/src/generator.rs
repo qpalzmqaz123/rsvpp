@@ -336,6 +336,11 @@ impl Generator {
         lines.push(format!("#[pack_type(\"{}\")]", enu.ty));
         lines.push(format!("pub enum {} {{", gen_struct_name(&enu.name)));
         lines.extend(Self::gen_enum_fields(&enu.fields)?);
+
+        // Append default field
+        lines.push(format!("    #[default]"));
+        lines.push(format!("    Mismatch({}),", enu.ty));
+
         lines.push(format!("}}\n"));
 
         lines.extend(Self::gen_enum_field_impl(&enu)?);
