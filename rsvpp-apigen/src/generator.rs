@@ -377,7 +377,9 @@ impl Generator {
             if let Some(refer) = &field.refer {
                 lines.push(format!("    #[len(\"{}\")]", refer));
             } else if let Some(n) = field.len {
-                lines.push(format!("    #[len({})]", n));
+                if n > 0 {
+                    lines.push(format!("    #[len({})]", n));
+                }
             }
 
             lines.push(format!(
