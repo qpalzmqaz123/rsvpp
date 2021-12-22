@@ -250,15 +250,19 @@ fn test5() {
         B,
         #[value(2)]
         C,
+        #[default]
+        NotMatch(u16),
     }
 
     assert_eq!(A::static_size(), std::mem::size_of::<u16>());
     assert_eq!(A::A.pack_vec().unwrap(), vec![0, 0]);
     assert_eq!(A::B.pack_vec().unwrap(), vec![0, 1]);
     assert_eq!(A::C.pack_vec().unwrap(), vec![0, 2]);
+    assert_eq!(A::NotMatch(10).pack_vec().unwrap(), vec![0, 10]);
     assert_eq!(A::unpack(&vec![0, 0], 0).unwrap().0, A::A);
     assert_eq!(A::unpack(&vec![0, 1], 0).unwrap().0, A::B);
     assert_eq!(A::unpack(&vec![0, 2], 0).unwrap().0, A::C);
+    assert_eq!(A::unpack(&vec![0, 20], 0).unwrap().0, A::NotMatch(20));
 }
 
 #[test]

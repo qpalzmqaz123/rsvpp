@@ -11,7 +11,7 @@ use proc_macro_error::{abort, proc_macro_error};
 use syn::{parse_macro_input, DeriveInput};
 use union_parser::UnionParser;
 
-#[proc_macro_derive(Pack, attributes(packed, len, value, pack_type))]
+#[proc_macro_derive(Pack, attributes(packed, len, value, pack_type, default))]
 #[proc_macro_error]
 pub fn derive_pack(item: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(item);

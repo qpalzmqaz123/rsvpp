@@ -15,6 +15,7 @@ struct FieldInfo {
 pub struct EnumParser {
     name: String,
     ty: String,
+    default: Option<String>,
     fields: Vec<FieldInfo>,
 }
 
@@ -23,6 +24,7 @@ impl EnumParser {
         let mut instance = Self {
             name,
             ty,
+            default: None,
             fields: Vec::new(),
         };
 
@@ -75,8 +77,20 @@ impl EnumParser {
 
             // Ensure first attr is 'value'
             if let Some(seg) = attr.path.segments.first() {
-                if seg.ident.to_string() != "value" {
-                    abort!(var, "Attr must be 'value'")
+                let attr_str = seg.ident.to_string();
+                match attr_str.as_str() {
+                    "value" => {}
+                    "default" => {
+                        if self.default.is_some() {
+                            abort!(var, "Default field count must be 1");
+                        }
+
+                        // Get default field name
+                        self.default = Some(var.ident.to_string());
+
+                        continue;
+                    }
+                    _ => abort!(var, "Attr must be 'value' or 'default'"),
                 }
             } else {
                 abort!(var, "Expect valid attr")
@@ -138,9 +152,20 @@ impl EnumParser {
             })
             .collect();
 
+        let default_toks = if let Some(default) = &self.default {
+            let default = str_to_toks(default);
+            let ty = str_to_toks(&self.ty);
+            quote! {
+                Self::#default(v) => (*v as #ty).pack(buf),
+            }
+        } else {
+            quote! {}
+        };
+
         quote! {
             match self {
                 #(#toks)*
+                #default_toks
             }
         }
     }
@@ -159,11 +184,22 @@ impl EnumParser {
             .collect();
         let ty = str_to_toks(&self.ty);
 
+        let default_toks = if let Some(default) = &self.default {
+            let default = str_to_toks(default);
+            quote! {
+                v @ _ => Self::#default(v),
+            }
+        } else {
+            quote! {
+                _ => return Err(format!("Enum Pack received invalid number: '{}', type: '{}'", v, std::any::type_name::<Self>()).into()),
+            }
+        };
+
         quote! {
             let (v, size) = #ty::unpack(buf, 0)?;
             let e = match v {
                 #(#toks)*
-                _ => return Err(format!("Enum Pack received invalid number: '{}'", v).into()),
+                #default_toks
             };
 
             Ok((e, size))
