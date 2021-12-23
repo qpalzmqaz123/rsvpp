@@ -264,7 +264,7 @@ impl StructParser {
                 };
 
                 let size = if let Some(LengthInfo::Fixed(size)) = &field.length {
-                    quote! { #size }
+                    quote! { #size * <#ty>::align_size() }
                 } else {
                     quote! { res.1 }
                 };
