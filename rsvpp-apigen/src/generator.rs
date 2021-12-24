@@ -332,7 +332,7 @@ impl Generator {
 
         let mut lines: Vec<String> = Vec::new();
 
-        lines.push(format!("#[derive(Pack, Debug)]"));
+        lines.push(format!("#[derive(Pack, Debug, PartialEq, Eq)]"));
         lines.push(format!("#[pack_type(\"{}\")]", enu.ty));
         lines.push(format!("pub enum {} {{", gen_struct_name(&enu.name)));
         lines.extend(Self::gen_enum_fields(&enu.fields)?);
