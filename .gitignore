@@ -1,3 +1,4 @@
 /target
 /examples/vpp_api/*
 !/examples/vpp_api/mod.rs
+/.vscode

@@ -20,3 +20,7 @@ path = "version.rs"
 [[example]]
 name = "acl"
 path = "acl.rs"
+
+[[example]]
+name = "stats"
+path = "stats.rs"
