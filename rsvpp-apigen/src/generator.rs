@@ -578,13 +578,13 @@ impl Generator {
         if service.is_stream {
             lines.push(format!("    pub async fn {}(&self, req: {}) -> rsvpp::Result<Vec<{}>> {{", func_name, req_type, rep_type));
             lines.push(format!("        let ctx = self.client.send_msg(req).await?;"));
-            lines.push(format!("        self.client.send_msg_with_ctx(super::vpe::ControlPing::new(), ctx).await?;"));
+            lines.push(format!("        self.client.send_msg_with_ctx(super::memclnt::ControlPing::new(), ctx).await?;"));
 
             lines.push(format!("        let mut arr: Vec<{}> = Vec::new();", rep_type));
             lines.push(format!("        'outer: loop {{"));
             lines.push(format!("            for entry in self.client.recv(ctx).await? {{"));
-            lines.push(format!("                if entry.header._vl_msg_id == self.client.get_msg_id::<super::vpe::ControlPingReply>()? {{"));
-            lines.push(format!("                    let rep = super::vpe::ControlPingReply::unpack(&entry.data, 0)?.0;"));
+            lines.push(format!("                if entry.header._vl_msg_id == self.client.get_msg_id::<super::memclnt::ControlPingReply>()? {{"));
+            lines.push(format!("                    let rep = super::memclnt::ControlPingReply::unpack(&entry.data, 0)?.0;"));
             lines.push(format!("                    check_error(rep.retval() as i32)?;"));
             lines.push(format!("                    break 'outer;"));
             lines.push(format!("                }}"));
