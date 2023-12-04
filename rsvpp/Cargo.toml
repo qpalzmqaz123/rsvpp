@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 pack = { path = "../pack" }
 
-tokio = { version = "0.2", default-features = false, features = ["uds", "io-util", "sync", "rt-core", "time"] }
+tokio = { version = "1", default-features = false, features = ["sync", "macros", "time", "rt", "io-util", "net"] }
 async-trait = { version = "0.1", default-features = false }
 log = { version = "0.4", default-features = false }
 lazy_static = { version = "1", default-features = false }

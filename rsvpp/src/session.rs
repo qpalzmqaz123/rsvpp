@@ -57,7 +57,7 @@ impl Session {
         let buf = msg.encode()?;
 
         tokio::select! {
-            _ = time::delay_for(time::Duration::from_millis(timeout)) => Err(Error::timeout("Send timeout")),
+            _ = time::sleep(time::Duration::from_millis(timeout)) => Err(Error::timeout("Send timeout")),
             res = self.transport.write(&buf) => res,
         }
     }
@@ -89,7 +89,7 @@ impl Session {
 
     pub async fn recv(&self, ctx: u32, timeout: u64) -> Result<Vec<RecvEntry>> {
         tokio::select! {
-            _ = time::delay_for(time::Duration::from_millis(timeout)) => Err(Error::timeout("Recv timeout")),
+            _ = time::sleep(time::Duration::from_millis(timeout)) => Err(Error::timeout("Recv timeout")),
             res = self.internal_recv(ctx) => res,
         }
     }
@@ -156,7 +156,7 @@ impl RecvTask {
                 res = self.recv_frame() => {
                     if let Err(e) = res {
                         log::warn!("Recv frame error {}", e);
-                        tokio::time::delay_for(tokio::time::Duration::from_secs(3)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
                     } else {
                         // Send signal
                         log::trace!("Send signal, rx count: {}", self.signal_tx.receiver_count());
