@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use pack::{pack_union, Pack};
+use pack::{pack_union, FixedString, Pack};
 
 #[test]
 fn test1() {
@@ -76,7 +76,7 @@ fn test2() {
     #[derive(Pack, Debug, PartialEq, Eq)]
     struct A {
         #[len(4)]
-        a: String, // Fixed 4
+        a: FixedString<4>, // Fixed 4
         b: [u8; 2],
         c_len: u32,
         #[len("c_len")]
@@ -84,7 +84,7 @@ fn test2() {
     }
 
     let mut a = A {
-        a: "ab".to_string(),
+        a: "ab".into(),
         b: [1, 2],
         c_len: 3,
         c: vec![4, 5, 6],
@@ -117,7 +117,7 @@ fn test2_packed() {
     #[packed]
     struct A {
         #[len(4)]
-        a: String, // Fixed 4
+        a: FixedString<4>, // Fixed 4
         b: [u8; 2],
         c_len: u32,
         #[len("c_len")]
@@ -125,7 +125,7 @@ fn test2_packed() {
     }
 
     let mut a = A {
-        a: "ab".to_string(),
+        a: "ab".into(),
         b: [1, 2],
         c_len: 3,
         c: vec![4, 5, 6],
@@ -158,13 +158,13 @@ fn test3() {
         a: u16,
         b: u32,
         #[len(5)]
-        c: String,
+        c: FixedString<5>,
     }
 
     let mut a = A {
         a: 1,
         b: 2,
-        c: "ab".to_string(),
+        c: "ab".into(),
     };
     let c = C {
         a: 1_u16.to_be(),
@@ -195,13 +195,13 @@ fn test3_packed() {
         a: u16,
         b: u32,
         #[len(5)]
-        c: String,
+        c: FixedString<5>,
     }
 
     let mut a = A {
         a: 1,
         b: 2,
-        c: "ab".to_string(),
+        c: "ab".into(),
     };
     let c = C {
         a: 1_u16.to_be(),

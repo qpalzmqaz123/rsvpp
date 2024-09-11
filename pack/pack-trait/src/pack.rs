@@ -97,6 +97,7 @@ macro_rules! min {
     };
 }
 
+#[macro_export]
 macro_rules! validate_buffer {
     ($buf:expr, $size:expr) => {
         if $buf.len() < $size {
@@ -183,52 +184,6 @@ impl Pack for bool {
         validate_buffer!(buf, 1);
 
         Ok((buf[0] != 0, 1))
-    }
-}
-
-// Impl Pack for String
-impl Pack for String {
-    fn size(&self) -> usize {
-        self.len() + 1
-    }
-
-    fn static_size() -> usize {
-        std::mem::size_of::<*const u8>()
-    }
-
-    fn align_size() -> usize {
-        1
-    }
-
-    fn pack(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let size = self.size();
-
-        validate_buffer!(buf, size);
-        for (i, c) in self.chars().enumerate() {
-            buf[i] = c as u8;
-        }
-        buf[size - 1] = 0;
-
-        Ok(size)
-    }
-
-    fn unpack(buf: &[u8], _: usize) -> Result<(Self, usize)> {
-        let mut s_buf: Vec<u8> = Vec::new();
-        for c in buf {
-            if *c == 0 {
-                break;
-            } else {
-                s_buf.push(*c);
-            }
-        }
-
-        if buf.len() == s_buf.len() {
-            return Err("\\0 Not found".into());
-        }
-
-        let s = String::from_utf8(s_buf)?;
-        let len = s.len();
-        Ok((s, len))
     }
 }
 

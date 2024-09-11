@@ -132,7 +132,7 @@ impl Client {
         let sock_clnt_create_msg = Message::new(VlApiSockclntCreateT {
             _vl_msg_id: VL_API_SOCK_CLNT_CREATE_MSG_ID,
             context: ctx,
-            name: CLIENT_NAME.to_string(),
+            name: CLIENT_NAME.into(),
         });
         log::trace!("Send sockclnt create");
         self.sess

@@ -24,3 +24,7 @@ path = "acl.rs"
 [[example]]
 name = "stats"
 path = "stats.rs"
+
+[[example]]
+name = "interface"
+path = "interface.rs"

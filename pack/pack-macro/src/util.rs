@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 
 /// Parse token stream to syn type, call proc_macro_error::abort! if error occurred
 ///
-/// ```rust
+/// ```ignore
 /// let list: syn::ExprTuple = parse2! { attr.tokens,
 ///     "Syntax error of module imports";
 ///     note = "Syntax is #[imports(MODULE_A as TYPE_A, MODULEB as TYPE_B,)]";

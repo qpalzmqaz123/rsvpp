@@ -1,3 +1,5 @@
+use pack::FixedString;
+
 use crate::{
     message::{MessageClientId, MessageContext, MessageId, MessageName},
     pack::Pack,
@@ -19,7 +21,7 @@ pub struct VlApiSockclntCreateT {
     pub _vl_msg_id: u16,
     pub context: u32,
     #[len(64)]
-    pub name: String,
+    pub name: FixedString<64>,
 }
 
 impl MessageName for VlApiSockclntCreateT {
@@ -107,5 +109,5 @@ impl MessageClientId for VlApiSockclntCreateReplyT {
 pub struct VlApiMessageTableEntryT {
     pub index: u16,
     #[len(64)]
-    pub name: String,
+    pub name: FixedString<64>,
 }

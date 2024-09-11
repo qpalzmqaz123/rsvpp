@@ -1,5 +1,5 @@
 #![cfg(test)]
-use pack::Pack;
+use pack::{FixedString, Pack};
 
 #[test]
 fn test1() {
@@ -122,7 +122,7 @@ fn test2() {
 
     #[derive(Debug, PartialEq, Eq)]
     struct A {
-        a: String, // Fixed 4
+        a: FixedString<4>, // Fixed 4
         b: [u8; 2],
         c_len: u32,
         c: Vec<u8>, // Dynamic size with c_len
@@ -132,7 +132,7 @@ fn test2() {
         fn size(&self) -> usize {
             let mut offset = 0;
 
-            offset = pack::align_offset(offset, String::align_size(), false);
+            offset = pack::align_offset(offset, FixedString::<4>::align_size(), false);
             offset += 4;
 
             offset = pack::align_offset(offset, <[u8; 2]>::align_size(), false);
@@ -152,7 +152,7 @@ fn test2() {
             let mut offset = 0;
 
             offset = pack::align_offset(offset, u8::align_size(), false);
-            offset += String::static_size();
+            offset += FixedString::<4>::static_size();
 
             offset = pack::align_offset(offset, u16::align_size(), false);
             offset += <[u8; 2]>::static_size();
@@ -169,7 +169,7 @@ fn test2() {
 
         fn align_size() -> usize {
             pack::max!(
-                String::align_size(),
+                FixedString::<4>::align_size(),
                 <[u8; 2]>::align_size(),
                 u32::align_size(),
                 <Vec<u8>>::align_size()
@@ -181,7 +181,7 @@ fn test2() {
 
             let mut offset = 0;
 
-            offset = pack::align_offset(offset, String::align_size(), false);
+            offset = pack::align_offset(offset, FixedString::<4>::align_size(), false);
             self.a
                 .pack(pack::safe_slice_mut(buf, offset, Some(self.a.size()))?)?;
             offset += 4;
@@ -207,8 +207,8 @@ fn test2() {
         fn unpack(buf: &[u8], _: usize) -> pack::Result<(Self, usize)> {
             let mut offset = 0;
 
-            offset = pack::align_offset(offset, String::align_size(), false);
-            let res = String::unpack(pack::safe_slice(buf, offset, None)?, 0)?;
+            offset = pack::align_offset(offset, FixedString::<4>::align_size(), false);
+            let res = FixedString::<4>::unpack(pack::safe_slice(buf, offset, None)?, 0)?;
             let a = res.0;
             offset += 4;
 
@@ -232,7 +232,7 @@ fn test2() {
     }
 
     let mut a = A {
-        a: "ab".to_string(),
+        a: "ab".into(),
         b: [1, 2],
         c_len: 3,
         c: vec![4, 5, 6],

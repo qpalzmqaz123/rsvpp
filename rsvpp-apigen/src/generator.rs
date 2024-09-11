@@ -525,7 +525,10 @@ impl Generator {
     fn gen_field_type(field: &ApiField) -> Result<String> {
         // String is special
         if field.ty == "string" {
-            return Ok("String".to_string());
+            match field.len {
+                Some(n @ 1..) => return Ok(format!("rsvpp::FixedString<{n}>")),
+                _ => return Ok("rsvpp::DynamicString".to_string()),
+            }
         }
 
         if let Some(n) = field.len {
